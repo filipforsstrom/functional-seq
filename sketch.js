@@ -1,11 +1,23 @@
 const sampleRate = 512;
-let pitchFunc;
-let velFunc;
-let notes;
-let midiIn;
-let midiOut;
-
+const voiceNum = 2;
+let voices;
+let pitchFunc = [];
+let velFunc = [];
+let notes = [];
+let midiOut = [];
+let midiChannel = [];
+let speed = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
+let update = false;
 let mode = 0;
+let cycle = [];
+// let cycle = [
+//   new Tone.Loop(() => {
+//     play(0);
+//   }, speed[0]),
+//   new Tone.Loop(() => {
+//     play(1);
+//   }, speed[1]),
+// ];
 
 function preload() {
   // MIDI
@@ -30,51 +42,66 @@ function preload() {
 function setup() {
   createCanvas(windowWidth, windowHeight);
 
-  pitchFunc = new Func(1);
-  pitchFunc.generate();
-  velFunc = new Func(0);
-  velFunc.generate();
-  notes = new Notes(
-    pitchFunc.getFunc(),
-    velFunc.getFunc(),
-    width / 2,
-    height / 2
-  );
-  notes.generateNotesArray();
+  for (let i = 0; i < voiceNum; i++) {
+    cycle[i] = new Tone.Loop(() => {
+      play(i);
+    }, speed[i]);
+    pitchFunc[i] = new Func(0);
+    pitchFunc[i].generate();
+    velFunc[i] = new Func(4);
+    velFunc[i].generate();
+    notes[i] = new Notes(
+      i,
+      pitchFunc[i].getFunc(),
+      velFunc[i].getFunc(),
+      random(width / 4, width / 2),
+      random(height / 4, height / 2)
+    );
+    notes[i].generateNotesArray();
+  }
 }
 
 function draw() {
   background(0);
-  notes.display(mouseX, mouseY);
+  for (let i = 0; i < voiceNum; i++) {
+    notes[i].display(mouseX, mouseY);
+    if (update === true) {
+      speed[i] = map(notes[i].positionY, 0, width, 0.0001, 30.0);
+      cycle[i].set({ playbackRate: speed[i] });
+    }
+  }
 }
 
 function mousePressed() {
   if (mode === 0) {
-    midiIn = WebMidi.getInputByName("IAC Driver Bus 1");
-    midiOut = WebMidi.getOutputByName("IAC Driver Bus 1");
-    midiIn.addListener("noteon", (e) => {
-      //console.log(e.note.identifier);
-    });
-    const playLoop = new Tone.Loop(() => {
-      play();
-    }, 0.1).start(0);
+    for (let i = 0; i < voiceNum; i++) {
+      midiOut[i] = WebMidi.getOutputByName("IAC Driver Bus 1");
+      midiChannel[i] = midiOut[i].channels[1];
+      cycle[i].start(0);
+    }
     Tone.Transport.start();
     mode = 1;
   }
-  notes.pressed(mouseX, mouseY);
+  for (let i = 0; i < voiceNum; i++) {
+    notes[i].pressed(mouseX, mouseY);
+  }
+  update = true;
 }
 
 function mouseReleased() {
-  notes.notPressed();
+  for (let i = 0; i < voiceNum; i++) {
+    notes[i].notPressed();
+  }
+  update = false;
 }
 
-function play() {
-  let channel = midiOut.channels[1];
-  let pitch = notes.getPitch();
-  let vel = notes.getVel();
+function play(i) {
+  let pitch = notes[i].getPitch();
+  let vel = notes[i].getVel();
   //console.table({ pitch, vel });
-  channel.playNote(pitch, { rawAttack: vel });
-  channel.stopNote(pitch, { time: "+1" });
+  midiChannel[i].playNote(pitch, { rawAttack: vel });
+  midiChannel[i].stopNote(pitch, { time: "+1" });
+  notes[i].cycle();
 }
 
 class Func {
@@ -130,16 +157,15 @@ class Func {
 }
 
 class Notes {
-  constructor(pitchFunc, velFunc, x, y) {
+  constructor(number, pitchFunc, velFunc, x, y) {
+    this.number = number;
     this.sampleRate = sampleRate;
-    //midi
-    //pitch
     this.pitchFunc = pitchFunc;
     this.pitch;
     this.pitches = [];
     this.tempPitches = [];
-    this.upperPitchLimit = 110;
-    this.lowerPitchLimit = 30;
+    this.upperPitchLimit = 100;
+    this.lowerPitchLimit = 40;
     this.positionPitch = 0;
     //vel
     this.velFunc = velFunc;
@@ -150,9 +176,9 @@ class Notes {
     this.lowerVelLimit = 30;
     this.positionVel = 0;
     this.speed = 0.1;
-    this.cycleEvent = new Tone.Loop(() => {
-      this.cycle();
-    }, this.speed).start(0);
+    // this.cycleEvent = new Tone.Loop(() => {
+    //   this.cycle();
+    // }, this.speed).start(0);
     //display
     this.position = new createVector(x, y);
     this.pOffset = new createVector();
@@ -186,8 +212,12 @@ class Notes {
         this.vels.push(this.tempVels[i]);
       }
     }
-    console.table(this.tempVels);
-    console.table(this.vels);
+    console.table([
+      this.tempPitches.length,
+      this.pitches.length,
+      this.tempVels.length,
+      this.vels.length,
+    ]);
     return this.pitches;
   }
   cycle() {
@@ -199,16 +229,12 @@ class Notes {
     if (this.positionVel > this.vels.length - 1) {
       this.positionVel = 0;
     }
-    console.log(this.speed);
   }
   getPitch() {
     return this.pitches[this.positionPitch];
   }
   getVel() {
     return this.vels[this.positionVel];
-  }
-  play(){
-
   }
   //display
   display(px, py) {
@@ -218,6 +244,8 @@ class Notes {
       this.position.y = py + this.pOffset.y;
     }
     ellipse(this.position.x, this.position.y, this.diameter, this.diameter);
+    textAlign(CENTER);
+    text(this.number, this.position.x, this.position.y);
   }
   pressed(px, py) {
     if (
@@ -228,10 +256,14 @@ class Notes {
       this.offsetX = this.position.x - px;
       this.offsetY = this.position.y - py;
     }
-    this.speed = map(this.position.x, 0, height, 0.001, 0.9);
-    this.cycleEvent.set({ playbackRate: this.speed });
   }
   notPressed() {
     this.dragging = false;
+  }
+  get positionX() {
+    return this.position.x;
+  }
+  get positionY() {
+    return this.position.y;
   }
 }
