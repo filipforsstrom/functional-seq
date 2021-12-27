@@ -1,8 +1,11 @@
 const sampleRate = 512;
-let func;
+let pitchFunc;
+let velFunc;
 let notes;
 let midiIn;
 let midiOut;
+
+let mode = 0;
 
 function preload() {
   // MIDI
@@ -27,43 +30,58 @@ function preload() {
 function setup() {
   createCanvas(windowWidth, windowHeight);
 
-  func = new Func();
-  func.generate();
-  notes = new Notes(func.getFunc());
+  pitchFunc = new Func(1);
+  pitchFunc.generate();
+  velFunc = new Func(0);
+  velFunc.generate();
+  notes = new Notes(
+    pitchFunc.getFunc(),
+    velFunc.getFunc(),
+    width / 2,
+    height / 2
+  );
   notes.generateNotesArray();
 }
 
 function draw() {
   background(0);
+  notes.display(mouseX, mouseY);
 }
 
 function mousePressed() {
-  //userStartAudio();
-  midiIn = WebMidi.getInputByName("IAC Driver Bus 1");
-  midiOut = WebMidi.getOutputByName("IAC Driver Bus 1");
-  midiIn.addListener("noteon", (e) => {
-    //console.log(e.note.identifier);
-  });
-  //setInterval(play, 10);
-  const playLoop = new Tone.Loop(() => {
-    play();
-  }, 0.2).start(0);
-  Tone.Transport.start();
+  if (mode === 0) {
+    midiIn = WebMidi.getInputByName("IAC Driver Bus 1");
+    midiOut = WebMidi.getOutputByName("IAC Driver Bus 1");
+    midiIn.addListener("noteon", (e) => {
+      //console.log(e.note.identifier);
+    });
+    const playLoop = new Tone.Loop(() => {
+      play();
+    }, 0.1).start(0);
+    Tone.Transport.start();
+    mode = 1;
+  }
+  notes.pressed(mouseX, mouseY);
+}
+
+function mouseReleased() {
+  notes.notPressed();
 }
 
 function play() {
   let channel = midiOut.channels[1];
-  let sendNote = notes.getNote();
-  console.log(sendNote);
-  channel.playNote(sendNote);
-  channel.stopNote(sendNote, { time: "+1" });
+  let pitch = notes.getPitch();
+  let vel = notes.getVel();
+  //console.table({ pitch, vel });
+  channel.playNote(pitch, { rawAttack: vel });
+  channel.stopNote(pitch, { time: "+1" });
 }
 
 class Func {
-  constructor() {
+  constructor(waveform) {
     this.gen = new p5.Gen();
     this.func = [];
-    this.selectWaveform = 1;
+    this.selectWaveform = waveform;
     this.waveform = [
       "sine",
       "saw",
@@ -112,82 +130,108 @@ class Func {
 }
 
 class Notes {
-  constructor(func) {
+  constructor(pitchFunc, velFunc, x, y) {
     this.sampleRate = sampleRate;
-    this.func = func;
+    //midi
+    //pitch
+    this.pitchFunc = pitchFunc;
     this.pitch;
     this.pitches = [];
     this.tempPitches = [];
-    this.position = 0;
-    this.previousPitch;
-    this.nextPitchPosition;
     this.upperPitchLimit = 110;
     this.lowerPitchLimit = 30;
-    this.speed = 0.02;
+    this.positionPitch = 0;
+    //vel
+    this.velFunc = velFunc;
+    this.vel;
+    this.vels = [];
+    this.tempVels = [];
+    this.upperVelLimit = 127;
+    this.lowerVelLimit = 30;
+    this.positionVel = 0;
+    this.speed = 0.1;
     this.cycleEvent = new Tone.Loop(() => {
       this.cycle();
     }, this.speed).start(0);
+    //display
+    this.position = new createVector(x, y);
+    this.pOffset = new createVector();
+    this.diameter = 20;
+    this.dragging = false;
   }
   generateNotesArray() {
-    for (let i = 0; i < this.func.length; i++) {
+    for (let i = 0; i < this.sampleRate; i++) {
       this.tempPitches.push(
-        int(map(this.func[i], -1, 1, this.lowerPitchLimit, this.upperPitchLimit))
+        int(
+          map(
+            this.pitchFunc[i],
+            -1,
+            1,
+            this.lowerPitchLimit,
+            this.upperPitchLimit
+          )
+        )
+      );
+      this.tempVels.push(
+        int(map(this.velFunc[i], -1, 1, this.lowerVelLimit, this.upperVelLimit))
       );
     }
-    for (let i = 0; i < this.tempPitches.length; i++) {
+    for (let i = 0; i < this.sampleRate; i++) {
       if (this.tempPitches[i] != this.tempPitches[i - 1]) {
         this.pitches.push(this.tempPitches[i]);
       }
     }
-    //console.table(this.tempPitches);
-    //console.table(this.pitches);
+    for (let i = 0; i < this.sampleRate; i++) {
+      if (this.tempVels[i] != this.tempVels[i - 1]) {
+        this.vels.push(this.tempVels[i]);
+      }
+    }
+    console.table(this.tempVels);
+    console.table(this.vels);
     return this.pitches;
   }
   cycle() {
-    this.position++;
-    if (this.position > this.pitches.length - 1) {
-      this.position = 0;
+    this.positionPitch++;
+    this.positionVel++;
+    if (this.positionPitch > this.pitches.length - 1) {
+      this.positionPitch = 0;
     }
+    if (this.positionVel > this.vels.length - 1) {
+      this.positionVel = 0;
+    }
+    console.log(this.speed);
   }
-  getNote() {
-    return this.pitches[this.position];
+  getPitch() {
+    return this.pitches[this.positionPitch];
   }
-  play() {
-    this.position = this.findNextPitchPosition(
-      this.notes,
-      this.position,
-      this.previousNote
-    );
+  getVel() {
+    return this.vels[this.positionVel];
+  }
+  play(){
 
-    this.note = this.notes[this.position];
-
-    this.previousNote = this.notes[this.position];
-    this.position++;
-    if (this.position > 509) {
-      this.position = 0;
-    }
-    console.log(this.position);
-    return this.note;
   }
-  // function findNextNote(arrayToSearch, currentPosition, previousNote) {
-  //   for (let index = currentPosition; index < arrayToSearch.length; index++) {
-  //     if (arrayToSearch[index] != previousNote) {
-  //       return arrayToSearch[index];
-  //     } else {
-  //       return arrayToSearch[0];
-  //     }
-  //   }
-  // }
-  findNextNotePosition(arrayToSearch, currentPosition, previousNote) {
-    for (let index = currentPosition; index < this.sampleRate; index++) {
-      if (arrayToSearch[index] != previousNote) {
-        return index;
-      }
-      // console.table([
-      //   arrayToSearch[currentPosition],
-      //   currentPosition,
-      //   previousNote,
-      // ]);
+  //display
+  display(px, py) {
+    stroke(255);
+    if (this.dragging) {
+      this.position.x = px + this.pOffset.x;
+      this.position.y = py + this.pOffset.y;
     }
+    ellipse(this.position.x, this.position.y, this.diameter, this.diameter);
+  }
+  pressed(px, py) {
+    if (
+      dist(this.position.x, this.position.y, mouseX, mouseY) <
+      this.diameter / 2
+    ) {
+      this.dragging = true;
+      this.offsetX = this.position.x - px;
+      this.offsetY = this.position.y - py;
+    }
+    this.speed = map(this.position.x, 0, height, 0.001, 0.9);
+    this.cycleEvent.set({ playbackRate: this.speed });
+  }
+  notPressed() {
+    this.dragging = false;
   }
 }
