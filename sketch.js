@@ -1,5 +1,5 @@
 const sampleRate = 512;
-const voiceNum = 2;
+const voiceNum = 1;
 let voices;
 let pitchFunc = [];
 let velFunc = [];
@@ -10,14 +10,8 @@ let speed = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
 let update = false;
 let mode = 0;
 let cycle = [];
-// let cycle = [
-//   new Tone.Loop(() => {
-//     play(0);
-//   }, speed[0]),
-//   new Tone.Loop(() => {
-//     play(1);
-//   }, speed[1]),
-// ];
+
+let gui;
 
 function preload() {
   // MIDI
@@ -41,19 +35,36 @@ function preload() {
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
+  gui = new guify({
+    title: "Func-SEQ",
+    theme: "light", // dark, light, yorha, or theme object
+    align: "right", // left, right
+    width: 300,
+    barMode: "above", // none, overlay, above, offset
+    panelMode: "inner",
+    opacity: 0.95,
+    open: true,
+  });
+  gui.Register([
+    {
+      type: "checkbox",
+      label: "Start",
+      onChange: (value) => {
+        toggleState(value);
+      },
+    },
+  ]);
 
   for (let i = 0; i < voiceNum; i++) {
     cycle[i] = new Tone.Loop(() => {
       play(i);
     }, speed[i]);
-    pitchFunc[i] = new Func(0);
-    pitchFunc[i].generate();
-    velFunc[i] = new Func(4);
-    velFunc[i].generate();
+    pitchFunc[i] = new Func();
+    velFunc[i] = new Func();
     notes[i] = new Notes(
       i,
-      pitchFunc[i].getFunc(),
-      velFunc[i].getFunc(),
+      pitchFunc[i].generate("sine"),
+      velFunc[i].generate("square"),
       random(width / 4, width / 2),
       random(height / 4, height / 2)
     );
@@ -72,16 +83,25 @@ function draw() {
   }
 }
 
-function mousePressed() {
-  if (mode === 0) {
+function toggleState(toggle) {
+  if (toggle) {
+    console.log("on");
     for (let i = 0; i < voiceNum; i++) {
       midiOut[i] = WebMidi.getOutputByName("IAC Driver Bus 1");
       midiChannel[i] = midiOut[i].channels[1];
       cycle[i].start(0);
     }
     Tone.Transport.start();
-    mode = 1;
+  } else if (toggle === false) {
+    console.log("off");
+    for (let i = 0; i < voiceNum; i++) {
+      cycle[i].stop(0);
+    }
+    Tone.Transport.stop();
   }
+}
+
+function mousePressed() {
   for (let i = 0; i < voiceNum; i++) {
     notes[i].pressed(mouseX, mouseY);
   }
@@ -105,11 +125,11 @@ function play(i) {
 }
 
 class Func {
-  constructor(waveform) {
+  constructor() {
     this.gen = new p5.Gen();
     this.func = [];
-    this.selectWaveform = waveform;
-    this.waveform = [
+    this.sampleRate = sampleRate;
+    this.allWaveforms = [
       "sine",
       "saw",
       "sawdown",
@@ -120,39 +140,12 @@ class Func {
       "tri",
       "buzz",
     ];
-    this.sampleRate = sampleRate;
-    this.note = [];
   }
-  generate() {
-    this.func = this.gen.fillArray(
-      "waveform",
-      this.sampleRate,
-      this.waveform[this.selectWaveform]
-    );
+  generate(waveform) {
+    this.func = this.gen.fillArray("waveform", this.sampleRate, waveform);
+    return this.func;
     //console.log(this.func);
     //fplot(this.func);
-  }
-  changeWaveform(x) {
-    this.selectWaveform = x;
-    //this.generate();
-    console.log(this.selectWaveform);
-  }
-  get() {
-    for (let i = 0; i < this.func.length; i++) {
-      this.note.push(
-        int(map(this.func[i], 1, -1, lowerNoteLimit, upperNoteLimit))
-      );
-    }
-    //console.log(this.note);
-    return this.note;
-  }
-  getFunc() {
-    this.func = this.gen.fillArray(
-      "waveform",
-      this.sampleRate,
-      this.waveform[this.selectWaveform]
-    );
-    return this.func;
   }
 }
 
@@ -212,12 +205,12 @@ class Notes {
         this.vels.push(this.tempVels[i]);
       }
     }
-    console.table([
-      this.tempPitches.length,
-      this.pitches.length,
-      this.tempVels.length,
-      this.vels.length,
-    ]);
+    // console.table([
+    //   this.tempPitches.length,
+    //   this.pitches.length,
+    //   this.tempVels.length,
+    //   this.vels.length,
+    // ]);
     return this.pitches;
   }
   cycle() {
