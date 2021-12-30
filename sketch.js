@@ -12,8 +12,11 @@ let speed = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
 let update = false;
 let mode = 0;
 let cycleArray = [];
-let addButton;
+const scales = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
+// UI
 let onOffBox;
+let selPitchFunc, selVelFunc;
+let addButton;
 let allWaveforms = [
   "sine",
   "saw",
@@ -25,7 +28,6 @@ let allWaveforms = [
   "tri",
   "buzz",
 ];
-let selPitchFunc, selVelFunc;
 
 let midiPromise = new Promise(function (resolve, reject) {
   WebMidi.enable()
@@ -151,11 +153,14 @@ function mouseReleased() {
 
 function play(i) {
   let pitch = notes[i].getPitch();
-  console.log(pitch);
+  console.log(pitch % 12);
+  let scalePosition = pitch % 12;
   let vel = notes[i].getVel();
   //console.table({ pitch, vel });
-  midiChannel[i].playNote(pitch, { rawAttack: vel });
-  midiChannel[i].stopNote(pitch, { time: "+1" });
+  if (scales[scalePosition]) {
+    midiChannel[i].playNote(pitch, { rawAttack: vel });
+    midiChannel[i].stopNote(pitch, { time: "+1" });
+  }
   notes[i].cycle();
 }
 
@@ -194,18 +199,17 @@ class Notes {
   constructor(number, pitchFunc, velFunc, x, y) {
     this.number = number;
     this.sampleRate = sampleRate;
+    //pitch
+    this.scales = scales;
+    this.positionScale = 0;
     this.pitchFunc = pitchFunc;
-    //this.pitch;
     this.pitches = [];
-    //this.tempPitches = [];
     this.upperPitchLimit = 100;
     this.lowerPitchLimit = 40;
     this.positionPitch = 0;
     //vel
     this.velFunc = velFunc;
-    //this.vel;
     this.vels = [];
-    //this.tempVels = [];
     this.upperVelLimit = 127;
     this.lowerVelLimit = 30;
     this.positionVel = 0;
@@ -230,6 +234,10 @@ class Notes {
           )
         )
       );
+
+      if (this.positionScale > this.scales.length) {
+        this.positionScale = 0;
+      }
       tempVels.push(
         int(map(this.velFunc[i], -1, 1, this.lowerVelLimit, this.upperVelLimit))
       );
