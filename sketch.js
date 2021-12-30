@@ -1,5 +1,5 @@
 const sampleRate = 512;
-const voiceNum = 2;
+let voiceNum = 1;
 let voices;
 let pitchFunc = [];
 let velFunc = [];
@@ -10,58 +10,72 @@ let speed = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
 let update = false;
 let mode = 0;
 let cycle = [];
-// let cycle = [
-//   new Tone.Loop(() => {
-//     play(0);
-//   }, speed[0]),
-//   new Tone.Loop(() => {
-//     play(1);
-//   }, speed[1]),
-// ];
 
-function preload() {
-  // MIDI
-  //-----------------------------------------------
+let addButton;
+let onOffBox;
+let allWaveforms = [
+  "sine",
+  "saw",
+  "sawdown",
+  "phasor",
+  "square",
+  "rect",
+  "pulse",
+  "tri",
+  "buzz",
+];
+let selPitchFunc, selVelFunc;
+
+// function preload() {
+//   // MIDI
+//   //-----------------------------------------------
+//   WebMidi.enable()
+//     .then(onEnabled)
+//     .catch((err) => alert(err));
+
+//   function onEnabled() {
+//     // Inputs
+//     WebMidi.inputs.forEach((input) =>
+//       console.log(input.manufacturer, input.name)
+//     );
+//     // Outputs
+//     WebMidi.outputs.forEach((output) =>
+//       console.log(output.manufacturer, output.name)
+//     );
+//   }
+//   //-----------------------------------------------
+// }
+let midiPromise = new Promise(function (resolve, reject) {
   WebMidi.enable()
-    .then(onEnabled)
+    .then(() => console.log("WebMidi enabled!"))
     .catch((err) => alert(err));
+  setTimeout(resolve, 500);
+});
 
-  function onEnabled() {
-    // Inputs
-    WebMidi.inputs.forEach((input) =>
-      console.log(input.manufacturer, input.name)
-    );
-    // Outputs
-    WebMidi.outputs.forEach((output) =>
-      console.log(output.manufacturer, output.name)
-    );
-  }
-  //-----------------------------------------------
-}
-
-function setup() {
-  createCanvas(windowWidth, windowHeight);
+async function setup() {
+  createCanvas(400, 400);
 
   for (let i = 0; i < voiceNum; i++) {
     cycle[i] = new Tone.Loop(() => {
       play(i);
     }, speed[i]);
-    pitchFunc[i] = new Func(0);
-    pitchFunc[i].generate();
-    velFunc[i] = new Func(4);
-    velFunc[i].generate();
+    pitchFunc[i] = new Func();
+    velFunc[i] = new Func();
     notes[i] = new Notes(
       i,
-      pitchFunc[i].getFunc(),
-      velFunc[i].getFunc(),
+      pitchFunc[i].generate("sine"),
+      velFunc[i].generate("square"),
       random(width / 4, width / 2),
       random(height / 4, height / 2)
     );
     notes[i].generateNotesArray();
   }
+  await midiPromise;
+  createButtons();
 }
 
-function draw() {
+async function draw() {
+  await midiPromise;
   background(0);
   for (let i = 0; i < voiceNum; i++) {
     notes[i].display(mouseX, mouseY);
@@ -72,16 +86,83 @@ function draw() {
   }
 }
 
-function mousePressed() {
-  if (mode === 0) {
+function createButtons() {
+  let selectedPitchWaveform;
+  let selectedVelWaveform;
+
+  onOffBox = createCheckbox("on/off", false);
+  onOffBox.changed(toggleState);
+
+  selPitchFunc = createSelect();
+  for (let i = 0; i < allWaveforms.length; i++) {
+    selPitchFunc.option(allWaveforms[i]);
+    selPitchFunc.changed(selectedPitch);
+  }
+  function selectedPitch() {
+    selectedPitchWaveform = selPitchFunc.value();
+  }
+  selVelFunc = createSelect();
+  for (let i = 0; i < allWaveforms.length; i++) {
+    selVelFunc.option(allWaveforms[i]);
+    selVelFunc.changed(selectedVel);
+  }
+  function selectedVel() {
+    selectedVelWaveform = selVelFunc.value();
+  }
+
+  addButton = createButton("add");
+  addButton.mousePressed(addVoice);
+}
+
+function toggleState() {
+  if (this.checked()) {
+    console.log("on");
     for (let i = 0; i < voiceNum; i++) {
       midiOut[i] = WebMidi.getOutputByName("IAC Driver Bus 1");
       midiChannel[i] = midiOut[i].channels[1];
       cycle[i].start(0);
     }
     Tone.Transport.start();
-    mode = 1;
+  } else {
+    console.log("off");
+    for (let i = 0; i < voiceNum; i++) {
+      cycle[i].stop(0);
+    }
+    Tone.Transport.stop();
   }
+}
+
+function start() {
+  console.log("on");
+  for (let i = 0; i < voiceNum; i++) {
+    midiOut[i] = WebMidi.getOutputByName("IAC Driver Bus 1");
+    midiChannel[i] = midiOut[i].channels[1];
+    cycle[i].start(0);
+  }
+  Tone.Transport.start();
+}
+
+function addVoice() {
+  voiceNum++;
+  for (let i = voiceNum - 1; i < voiceNum; i++) {
+    cycle[i] = new Tone.Loop(() => {
+      play(i);
+    }, speed[i]);
+    pitchFunc[i] = new Func();
+    velFunc[i] = new Func();
+    notes[i] = new Notes(
+      i,
+      pitchFunc[i].generate(selPitchFunc.value()),
+      velFunc[i].generate(selVelFunc.value()),
+      random(width / 4, width / 2),
+      random(height / 4, height / 2)
+    );
+    notes[i].generateNotesArray();
+  }
+  start();
+}
+
+function mousePressed() {
   for (let i = 0; i < voiceNum; i++) {
     notes[i].pressed(mouseX, mouseY);
   }
@@ -105,11 +186,11 @@ function play(i) {
 }
 
 class Func {
-  constructor(waveform) {
+  constructor() {
     this.gen = new p5.Gen();
     this.func = [];
-    this.selectWaveform = waveform;
-    this.waveform = [
+    this.sampleRate = sampleRate;
+    this.allWaveforms = [
       "sine",
       "saw",
       "sawdown",
@@ -120,39 +201,12 @@ class Func {
       "tri",
       "buzz",
     ];
-    this.sampleRate = sampleRate;
-    this.note = [];
   }
-  generate() {
-    this.func = this.gen.fillArray(
-      "waveform",
-      this.sampleRate,
-      this.waveform[this.selectWaveform]
-    );
+  generate(waveform) {
+    this.func = this.gen.fillArray("waveform", this.sampleRate, waveform);
+    return this.func;
     //console.log(this.func);
     //fplot(this.func);
-  }
-  changeWaveform(x) {
-    this.selectWaveform = x;
-    //this.generate();
-    console.log(this.selectWaveform);
-  }
-  get() {
-    for (let i = 0; i < this.func.length; i++) {
-      this.note.push(
-        int(map(this.func[i], 1, -1, lowerNoteLimit, upperNoteLimit))
-      );
-    }
-    //console.log(this.note);
-    return this.note;
-  }
-  getFunc() {
-    this.func = this.gen.fillArray(
-      "waveform",
-      this.sampleRate,
-      this.waveform[this.selectWaveform]
-    );
-    return this.func;
   }
 }
 
@@ -212,13 +266,18 @@ class Notes {
         this.vels.push(this.tempVels[i]);
       }
     }
-    console.table([
-      this.tempPitches.length,
-      this.pitches.length,
-      this.tempVels.length,
-      this.vels.length,
-    ]);
+    // console.table([
+    //   this.tempPitches.length,
+    //   this.pitches.length,
+    //   this.tempVels.length,
+    //   this.vels.length,
+    // ]);
     return this.pitches;
+  }
+  changeFunc(pitchFunc, velFunc) {
+    this.pitchFunc = pitchFunc;
+    this.velFunc = velFunc;
+    this.generateNotesArray();
   }
   cycle() {
     this.positionPitch++;
