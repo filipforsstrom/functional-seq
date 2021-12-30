@@ -10,7 +10,6 @@ let speed = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
 let update = false;
 let mode = 0;
 let cycle = [];
-
 let addButton;
 let onOffBox;
 let allWaveforms = [
