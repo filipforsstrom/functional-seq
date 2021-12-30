@@ -1,7 +1,9 @@
 const sampleRate = 512;
 let voiceNum = 1;
 let voices;
+let func;
 let pitchFunc = [];
+let pitchfunc;
 let velFunc = [];
 let notes = [];
 let midiOut = [];
@@ -9,7 +11,7 @@ let midiChannel = [];
 let speed = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
 let update = false;
 let mode = 0;
-let cycle = [];
+let cycleArray = [];
 let addButton;
 let onOffBox;
 let allWaveforms = [
@@ -25,25 +27,6 @@ let allWaveforms = [
 ];
 let selPitchFunc, selVelFunc;
 
-// function preload() {
-//   // MIDI
-//   //-----------------------------------------------
-//   WebMidi.enable()
-//     .then(onEnabled)
-//     .catch((err) => alert(err));
-
-//   function onEnabled() {
-//     // Inputs
-//     WebMidi.inputs.forEach((input) =>
-//       console.log(input.manufacturer, input.name)
-//     );
-//     // Outputs
-//     WebMidi.outputs.forEach((output) =>
-//       console.log(output.manufacturer, output.name)
-//     );
-//   }
-//   //-----------------------------------------------
-// }
 let midiPromise = new Promise(function (resolve, reject) {
   WebMidi.enable()
     .then(() => console.log("WebMidi enabled!"))
@@ -52,23 +35,22 @@ let midiPromise = new Promise(function (resolve, reject) {
 });
 
 async function setup() {
-  createCanvas(400, 400);
+  createCanvas(windowWidth, 800);
+  func = new Func();
 
-  for (let i = 0; i < voiceNum; i++) {
-    cycle[i] = new Tone.Loop(() => {
-      play(i);
-    }, speed[i]);
-    pitchFunc[i] = new Func();
-    velFunc[i] = new Func();
-    notes[i] = new Notes(
-      i,
-      pitchFunc[i].generate("sine"),
-      velFunc[i].generate("square"),
-      random(width / 4, width / 2),
-      random(height / 4, height / 2)
-    );
-    notes[i].generateNotesArray();
-  }
+  //default voice
+  let i = voiceNum - 1;
+  cycleArray[i] = new Tone.Loop(() => {
+    play(i);
+  }, speed[i]);
+  notes[i] = new Notes(
+    i,
+    func.generate("sine"),
+    func.generate("sine"),
+    random(width / 4, width / 2),
+    random(height / 4, height / 2)
+  );
+
   await midiPromise;
   createButtons();
 }
@@ -80,37 +62,31 @@ async function draw() {
     notes[i].display(mouseX, mouseY);
     if (update === true) {
       speed[i] = map(notes[i].positionY, 0, width, 0.0001, 30.0);
-      cycle[i].set({ playbackRate: speed[i] });
+      cycleArray[i].set({ playbackRate: speed[i] });
     }
   }
 }
 
 function createButtons() {
-  let selectedPitchWaveform;
-  let selectedVelWaveform;
-
   onOffBox = createCheckbox("on/off", false);
   onOffBox.changed(toggleState);
 
   selPitchFunc = createSelect();
   for (let i = 0; i < allWaveforms.length; i++) {
     selPitchFunc.option(allWaveforms[i]);
-    selPitchFunc.changed(selectedPitch);
-  }
-  function selectedPitch() {
-    selectedPitchWaveform = selPitchFunc.value();
   }
   selVelFunc = createSelect();
   for (let i = 0; i < allWaveforms.length; i++) {
     selVelFunc.option(allWaveforms[i]);
-    selVelFunc.changed(selectedVel);
-  }
-  function selectedVel() {
-    selectedVelWaveform = selVelFunc.value();
   }
 
   addButton = createButton("add");
-  addButton.mousePressed(addVoice);
+  addButton.mousePressed(() => {
+    addVoice(selPitchFunc.value(), selVelFunc.value());
+  });
+}
+function logga(val1, val2) {
+  console.log(val1, val2);
 }
 
 function toggleState() {
@@ -119,45 +95,43 @@ function toggleState() {
     for (let i = 0; i < voiceNum; i++) {
       midiOut[i] = WebMidi.getOutputByName("IAC Driver Bus 1");
       midiChannel[i] = midiOut[i].channels[1];
-      cycle[i].start(0);
+      cycleArray[i].start(0);
     }
     Tone.Transport.start();
   } else {
     console.log("off");
     for (let i = 0; i < voiceNum; i++) {
-      cycle[i].stop(0);
+      cycleArray[i].stop(0);
     }
     Tone.Transport.stop();
   }
 }
 
 function start() {
-  console.log("on");
+  //console.log("on");
   for (let i = 0; i < voiceNum; i++) {
     midiOut[i] = WebMidi.getOutputByName("IAC Driver Bus 1");
     midiChannel[i] = midiOut[i].channels[1];
-    cycle[i].start(0);
+    cycleArray[i].start(0);
   }
   Tone.Transport.start();
 }
 
-function addVoice() {
+function addVoice(pitchWaveform, velWaveform) {
+  let i = voiceNum;
+  console.log(i);
+  cycleArray[i] = new Tone.Loop(() => {
+    play(i);
+  }, speed[i]);
+  notes[i] = new Notes(
+    i,
+    func.generate(pitchWaveform),
+    func.generate(velWaveform),
+    random(width / 4, width / 2),
+    random(height / 4, height / 2)
+  );
+  notes[i].generateNotesArray();
   voiceNum++;
-  for (let i = voiceNum - 1; i < voiceNum; i++) {
-    cycle[i] = new Tone.Loop(() => {
-      play(i);
-    }, speed[i]);
-    pitchFunc[i] = new Func();
-    velFunc[i] = new Func();
-    notes[i] = new Notes(
-      i,
-      pitchFunc[i].generate(selPitchFunc.value()),
-      velFunc[i].generate(selVelFunc.value()),
-      random(width / 4, width / 2),
-      random(height / 4, height / 2)
-    );
-    notes[i].generateNotesArray();
-  }
   start();
 }
 
@@ -177,11 +151,18 @@ function mouseReleased() {
 
 function play(i) {
   let pitch = notes[i].getPitch();
+  console.log(pitch);
   let vel = notes[i].getVel();
   //console.table({ pitch, vel });
   midiChannel[i].playNote(pitch, { rawAttack: vel });
   midiChannel[i].stopNote(pitch, { time: "+1" });
   notes[i].cycle();
+}
+
+class Cycle {
+  constructor() {
+    this.speed;
+  }
 }
 
 class Func {
@@ -214,33 +195,31 @@ class Notes {
     this.number = number;
     this.sampleRate = sampleRate;
     this.pitchFunc = pitchFunc;
-    this.pitch;
+    //this.pitch;
     this.pitches = [];
-    this.tempPitches = [];
+    //this.tempPitches = [];
     this.upperPitchLimit = 100;
     this.lowerPitchLimit = 40;
     this.positionPitch = 0;
     //vel
     this.velFunc = velFunc;
-    this.vel;
+    //this.vel;
     this.vels = [];
-    this.tempVels = [];
+    //this.tempVels = [];
     this.upperVelLimit = 127;
     this.lowerVelLimit = 30;
     this.positionVel = 0;
-    this.speed = 0.1;
-    // this.cycleEvent = new Tone.Loop(() => {
-    //   this.cycle();
-    // }, this.speed).start(0);
-    //display
+    this.create = this.generateNotesArray();
     this.position = new createVector(x, y);
     this.pOffset = new createVector();
     this.diameter = 20;
     this.dragging = false;
   }
   generateNotesArray() {
+    let tempPitches = [];
+    let tempVels = [];
     for (let i = 0; i < this.sampleRate; i++) {
-      this.tempPitches.push(
+      tempPitches.push(
         int(
           map(
             this.pitchFunc[i],
@@ -251,24 +230,24 @@ class Notes {
           )
         )
       );
-      this.tempVels.push(
+      tempVels.push(
         int(map(this.velFunc[i], -1, 1, this.lowerVelLimit, this.upperVelLimit))
       );
     }
     for (let i = 0; i < this.sampleRate; i++) {
-      if (this.tempPitches[i] != this.tempPitches[i - 1]) {
-        this.pitches.push(this.tempPitches[i]);
+      if (tempPitches[i] != tempPitches[i - 1]) {
+        this.pitches.push(tempPitches[i]);
       }
     }
     for (let i = 0; i < this.sampleRate; i++) {
-      if (this.tempVels[i] != this.tempVels[i - 1]) {
-        this.vels.push(this.tempVels[i]);
+      if (tempVels[i] != tempVels[i - 1]) {
+        this.vels.push(tempVels[i]);
       }
     }
     // console.table([
-    //   this.tempPitches.length,
+    //   tempPitches.length,
     //   this.pitches.length,
-    //   this.tempVels.length,
+    //   tempVels.length,
     //   this.vels.length,
     // ]);
     return this.pitches;
