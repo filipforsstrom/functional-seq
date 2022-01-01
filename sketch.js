@@ -12,6 +12,8 @@ let speed = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
 let update = false;
 let mode = 0;
 let cycleArray = [];
+let sequencer = [];
+let distance = [];
 const scales = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
 // UI
 let onOffBox;
@@ -38,20 +40,17 @@ let midiPromise = new Promise(function (resolve, reject) {
 
 async function setup() {
   createCanvas(windowWidth, 800);
+
   func = new Func();
 
   //default voice
   let i = voiceNum - 1;
-  cycleArray[i] = new Tone.Loop(() => {
-    play(i);
-  }, speed[i]);
-  notes[i] = new Notes(
+  sequencer[i] = new Sequencer(
     i,
-    func.generate("sine"),
-    func.generate("sine"),
     random(width / 4, width / 2),
     random(height / 4, height / 2)
   );
+  notes[i] = new Notes(i, func.generate("sine"), func.generate("sine"));
 
   await midiPromise;
   createButtons();
@@ -59,13 +58,23 @@ async function setup() {
 
 async function draw() {
   await midiPromise;
-  background(0);
+  background(100);
+
   for (let i = 0; i < voiceNum; i++) {
-    notes[i].display(mouseX, mouseY);
+    sequencer[i].display(mouseX, mouseY);
+    sequencer[i].run();
     if (update === true) {
       speed[i] = map(notes[i].positionY, 0, width, 0.0001, 30.0);
-      cycleArray[i].set({ playbackRate: speed[i] });
     }
+  }
+  for (let i = 0; i < voiceNum; i++) {
+    distance[i] = dist(
+      sequencer[i].playheadPositionX,
+      0,
+      notes[i].positionX,
+      0
+    );
+    //console.log(distance[i]);
   }
 }
 
@@ -97,13 +106,15 @@ function toggleState() {
     for (let i = 0; i < voiceNum; i++) {
       midiOut[i] = WebMidi.getOutputByName("IAC Driver Bus 1");
       midiChannel[i] = midiOut[i].channels[1];
-      cycleArray[i].start(0);
+      //cycleArray[i].start(0);
+      sequencer[i].start();
     }
     Tone.Transport.start();
   } else {
     console.log("off");
     for (let i = 0; i < voiceNum; i++) {
-      cycleArray[i].stop(0);
+      //cycleArray[i].stop(0);
+      sequencer[i].stop();
     }
     Tone.Transport.stop();
   }
@@ -114,7 +125,8 @@ function start() {
   for (let i = 0; i < voiceNum; i++) {
     midiOut[i] = WebMidi.getOutputByName("IAC Driver Bus 1");
     midiChannel[i] = midiOut[i].channels[1];
-    cycleArray[i].start(0);
+    //cycleArray[i].start(0);
+    sequencer[i].start();
   }
   Tone.Transport.start();
 }
@@ -122,15 +134,15 @@ function start() {
 function addVoice(pitchWaveform, velWaveform) {
   let i = voiceNum;
   console.log(i);
-  cycleArray[i] = new Tone.Loop(() => {
-    play(i);
-  }, speed[i]);
+  sequencer[i] = new Sequencer(
+    i,
+    random(width / 4, width / 2),
+    random(height / 4, height / 2)
+  );
   notes[i] = new Notes(
     i,
     func.generate(pitchWaveform),
-    func.generate(velWaveform),
-    random(width / 4, width / 2),
-    random(height / 4, height / 2)
+    func.generate(velWaveform)
   );
   notes[i].generateNotesArray();
   voiceNum++;
@@ -140,6 +152,7 @@ function addVoice(pitchWaveform, velWaveform) {
 function mousePressed() {
   for (let i = 0; i < voiceNum; i++) {
     notes[i].pressed(mouseX, mouseY);
+    sequencer[i].pressed(mouseX, mouseY);
   }
   update = true;
 }
@@ -147,6 +160,7 @@ function mousePressed() {
 function mouseReleased() {
   for (let i = 0; i < voiceNum; i++) {
     notes[i].notPressed();
+    sequencer[i].notPressed();
   }
   update = false;
 }
@@ -162,6 +176,96 @@ function play(i) {
     midiChannel[i].stopNote(pitch, { time: "+1" });
   }
   notes[i].cycle();
+}
+
+class Sequencer {
+  constructor(number, keyX, keyY) {
+    this.running = false;
+    this.tempo = 4;
+    this.playheadPosition = new createVector(0, height);
+    this.playheadWidth = 1;
+    this.key = number;
+    this.keyPosition = new createVector(keyX, keyY);
+    this.keyOffset = new createVector();
+    this.keyDiameter = 60;
+    this.keyDragging = false;
+    this.speed = 0.01;
+    this.cycle = new Tone.Loop(() => {
+      play(this.key);
+    }, this.speed);
+  }
+  display(px, py) {
+    // playhead
+    rect(
+      this.playheadPosition.x,
+      0,
+      this.playheadWidth,
+      this.playheadPosition.y
+    );
+
+    // key
+    stroke(255);
+    if (this.keyDragging) {
+      this.keyPosition.x = px + this.keyOffset.x;
+      this.keyPosition.y = py + this.keyOffset.y;
+    }
+    ellipse(
+      this.keyPosition.x,
+      this.keyPosition.y,
+      this.keyDiameter,
+      this.keyDiameter
+    );
+    textAlign(CENTER);
+    text(this.key, this.keyPosition.x, this.keyPosition.y);
+  }
+  run() {
+    if (this.running == true) {
+      this.playheadPosition.x += this.tempo;
+
+      let distance = dist(this.playheadPosition.x, 0, this.keyPosition.x, 0);
+      //console.log(distance);
+      if (distance < this.playheadWidth + this.keyDiameter) {
+        this.keyOn();
+      } else {
+        this.keyOff();
+      }
+    }
+    if (this.playheadPosition.x > width) {
+      this.playheadPosition.x = 0;
+    }
+  }
+  start() {
+    this.playheadPosition.x = 0;
+    this.running = true;
+  }
+  stop() {
+    this.running = false;
+  }
+  keyOn() {
+    this.cycle.start(0);
+    //play(0);
+    console.log("key " + this.key + " on");
+  }
+  keyOff() {
+    this.cycle.stop();
+    console.log("key " + this.key + " off");
+  }
+  pressed(px, py) {
+    if (
+      dist(this.keyPosition.x, this.keyPosition.y, mouseX, mouseY) <
+      this.keyDiameter / 2
+    ) {
+      this.keyDragging = true;
+      this.keyOffset.x = this.keyPosition.x - px;
+      this.keyOffset.y = this.keyPosition.y - py;
+    }
+  }
+  notPressed() {
+    this.keyDragging = false;
+  }
+  get playheadPositionX() {
+    return this.playheadPosition.x;
+  }
 }
 
 class Cycle {
@@ -304,6 +408,9 @@ class Notes {
   }
   notPressed() {
     this.dragging = false;
+  }
+  get vPosition() {
+    return this.position;
   }
   get positionX() {
     return this.position.x;
