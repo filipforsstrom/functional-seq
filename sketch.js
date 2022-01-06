@@ -59,7 +59,7 @@ async function setup() {
   addWaveforms();
   addVoiceToControlPanel();
 
-  //sequencer.generateFunc();
+  sequencer.generateFunc();
   //createButtons();
 }
 
@@ -273,7 +273,7 @@ class Sequencer {
     this.notePlay = [];
     this.noteDistance = [];
     this.noteFunc = [];
-    this.noteFuncX = [];
+    this.noteFuncX = [[]];
     this.noteFuncYoffset;
     // setup
     this.create = this.setup();
@@ -324,12 +324,31 @@ class Sequencer {
       //console.log(this.notes[i].x);
     }
     // func
-    // let noteFuncX = [];
 
-    // strokeWeight(2);
-    // this.noteFuncYoffset = this.notes[0].x / 2;
+    strokeWeight(2);
+    this.noteFuncYoffset = this.notes[0].x / 2;
+
+    for (let i = 0; i < this.noteNum; i++) {
+      this.noteFuncX[i] = [i];
+      //console.log(this.noteFuncX[i])
+      for (let j = 0; j < this.noteFunc[i].length; j++) {
+        this.noteFuncX[i][j] = map(
+          j,
+          0,
+          this.noteFunc[i].length,
+          0,
+          this.noteSize[i]
+        );
+
+        point(
+          this.noteFuncX[i][j] + this.noteXpos[i],
+          this.noteFunc[i][j] + this.notes[i].y
+        );
+      }
+    }
 
     // for (let i = 0; i < this.noteNum; i++) {
+    //   //console.log(this.noteFuncX[i])
     //   this.noteFuncX[i] = [i];
     //   for (let j = 0; j < this.noteFunc[i].length; j++) {
     //     this.noteFuncX[i][j] = map(
@@ -350,19 +369,20 @@ class Sequencer {
     //console.log(this.noteFuncX[0]);
   }
   generateFunc() {
-    // for (let i = 0; i < this.noteNum; i++) {
-    //   this.noteFunc[i] = notes[i].pitches;
-    //   //console.log(i + " " + this.noteFunc[i]);
-    //   for (let j = 0; j < this.noteFunc[i].length; j++) {
-    //     this.noteFunc[i][j] = map(
-    //       this.noteFunc[i][j],
-    //       0,
-    //       127,
-    //       0,
-    //       this.notes[i].x
-    //     );
-    //   }
-    // }
+    for (let i = 0; i < this.noteNum; i++) {
+      this.noteFunc[i] = [...notes[i].pitches];
+      // console.table(this.noteFunc[i].length);
+      for (let j = 0; j < this.noteFunc[i].length; j++) {
+        this.noteFunc[i][j] = map(
+          this.noteFunc[i][j],
+          0,
+          127,
+          0,
+          this.notes[i].x
+        );
+      }
+      // console.table(this.noteFunc[i]);
+    }
   }
   setup() {
     let yPos = height / this.noteNum;
@@ -499,6 +519,10 @@ class Notes {
     this.dragging = false;
   }
   generateNotesArray() {
+    console.log([
+      this.pitches.length,
+    ]);
+    // this.pitches.length = 0;
     let tempPitches = [];
     let tempVels = [];
     for (let i = 0; i < this.sampleRate; i++) {
@@ -521,22 +545,25 @@ class Notes {
         int(map(this.velFunc[i], -1, 1, this.lowerVelLimit, this.upperVelLimit))
       );
     }
+    console.log([
+      this.pitches.length,
+    ]);
     for (let i = 0; i < this.sampleRate; i++) {
-      if (tempPitches[i] != tempPitches[i - 1]) {
-        this.pitches.push(tempPitches[i]);
-      }
+      // if (tempPitches[i] != tempPitches[i - 1]) {
+      this.pitches.push(tempPitches[i]);
+      // }
     }
     for (let i = 0; i < this.sampleRate; i++) {
-      if (tempVels[i] != tempVels[i - 1]) {
-        this.vels.push(tempVels[i]);
-      }
+      // if (tempVels[i] != tempVels[i - 1]) {
+      this.vels.push(tempVels[i]);
+      // }
     }
-    // console.table([
-    //   tempPitches.length,
-    //   this.pitches.length,
-    //   tempVels.length,
-    //   this.vels.length,
-    // ]);
+    console.table([
+      tempPitches.length,
+      this.pitches.length,
+      tempVels.length,
+      this.vels.length,
+    ]);
   }
   change(pitchFunc, velFunc, pitchLow, pitchHigh, velLow, velHigh) {
     this.pitchFunc = pitchFunc;
