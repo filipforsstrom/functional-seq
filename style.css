@@ -1,8 +1,28 @@
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
+  /* height: 100%;
+  width: 100%; */
+  display: block;
+}
+.global-settings {
+  /* position: fixed;
+  height: calc(100%); */
 }
 
 canvas {
-  display: block;
+  position: fixed;
+  margin-top: calc(5%);
+}
+
+.control-panel {
+  background-color: #47a5b3;
+  color: white;
+  position: fixed;
+  /* padding: 10px; */
+  width: calc(20%);
+  height: calc(10%);
+  margin-top: calc(5%);
+  margin-left: calc(80%);
 }
