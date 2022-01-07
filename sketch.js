@@ -142,7 +142,7 @@ function editVoice() {
   let currentVelWave = document.getElementById("currentVelWave");
 
   // set value
-  speed.value = notes[activeVoice].speed;
+  speed.value = notes[activeVoice].playbackRate;
   lowestPitch.value = notes[activeVoice].lowerPitchLimit;
   highestPitch.value = notes[activeVoice].upperPitchLimit;
   lowestVel.value = notes[activeVoice].lowerVelLimit;
@@ -152,7 +152,7 @@ function editVoice() {
 
   // change value
   speed.addEventListener("change", function () {
-    notes[activeVoice].speed = speed.value;
+    notes[activeVoice].playbackRate = speed.value;
     console.log(speed.value);
   });
   lowestPitch.addEventListener("change", function () {
@@ -182,8 +182,8 @@ function editVoice() {
     sequencer.generateFunc();
   });
   currentVelWave.addEventListener("change", function () {
-    notes[activeVoice].pitchWaveform = currentVelWave.value;
-    notes[activeVoice].pitchFunc = func.generate(currentVelWave.value);
+    notes[activeVoice].velWaveform = currentVelWave.value;
+    notes[activeVoice].velFunc = func.generate(currentVelWave.value);
     notes[activeVoice].generateNotesArray();
     sequencer.generateFunc();
   });
@@ -562,7 +562,8 @@ class Notes {
     this.lowerVelLimit = 30;
     this.positionVel = 0;
     // lfo
-    this.speed = 0.5;
+    this.speed = 0.0014;
+    this.playbackRate = 0.5;
     this.lfo = new Tone.Loop(() => {
       play(this.number);
     }, this.speed);
@@ -639,13 +640,14 @@ class Notes {
   }
   loop(start) {
     if (start) {
+      // this.lfo.playbackRate = this.playbackRate;
       this.lfo.start(0);
     } else {
       this.lfo.stop();
     }
   }
-  loopPlaybackRate() {
-    this.lfo.playbackRate = 2;
+  loopPlaybackRate(rate) {
+    this.lfo.playbackRate = rate;
   }
   get vPosition() {
     return this.position;
