@@ -1,5 +1,6 @@
 const sampleRate = 512;
 let voiceNum = 1;
+let activeVoice = 0;
 let voices;
 let func;
 let pitchFunc = [];
@@ -13,7 +14,12 @@ let mode = 0;
 let cycleArray = [];
 let sequencer;
 let distance = [];
-const scales = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
+// const scales = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
+const scales = {
+  major: [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1],
+  minor: [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0],
+};
+// console.log(scales);
 //const synth = new Tone.Synth().toDestination();
 const synth = new Tone.PolySynth(Tone.Synth, {
   oscillator: {
@@ -45,15 +51,22 @@ async function setup() {
   func = new Func();
 
   //default voice
-  let i = voiceNum - 1;
-  notes[i] = new Notes(i, func.generate("sine"), func.generate("sine"));
+  // let i = voiceNum - 1;
+  notes[0] = new Notes(
+    0,
+    func.generate("sine"),
+    func.generate("sine"),
+    "sine",
+    "sine"
+  );
 
   await midiPromise;
   addMidiDevice();
   addWaveforms();
   addVoiceToControlPanel();
-
+  addEvenListener();
   sequencer.generateFunc();
+  editVoice();
   //createButtons();
 }
 
@@ -76,8 +89,8 @@ function addMidiDevice() {
 function addWaveforms() {
   let addPitchSel = document.getElementById("addPitchWave");
   let addVelSel = document.getElementById("addVelWave");
-  let changePitchSel = document.getElementById("changePitchWave");
-  let changeVelSel = document.getElementById("changeVelWave");
+  let currentPitchSel = document.getElementById("currentPitchWave");
+  let currentVelSel = document.getElementById("currentVelWave");
 
   for (let i = 0; i < allWaveforms.length; i++) {
     let waveform = document.createElement("option");
@@ -92,12 +105,12 @@ function addWaveforms() {
   for (let i = 0; i < allWaveforms.length; i++) {
     let waveform = document.createElement("option");
     waveform.text = allWaveforms[i];
-    changePitchSel.add(waveform);
+    currentPitchSel.add(waveform);
   }
   for (let i = 0; i < allWaveforms.length; i++) {
     let waveform = document.createElement("option");
     waveform.text = allWaveforms[i];
-    changeVelSel.add(waveform);
+    currentVelSel.add(waveform);
   }
 }
 
@@ -105,8 +118,75 @@ function addVoiceToControlPanel() {
   let voiceSelector = document.getElementById("voiceSelector");
 
   let voice = document.createElement("option");
-  voice.text = voiceNum;
+  voice.text = voiceNum - 1;
   voiceSelector.add(voice);
+}
+
+function addEvenListener() {
+  // active voice
+  voiceSelector.addEventListener("change", function () {
+    let voice = document.getElementById("voiceSelector");
+    activeVoice = parseInt(voice.value);
+    // console.log(activeVoice);
+    editVoice();
+  });
+}
+
+function editVoice() {
+  let speed = document.getElementById("speed");
+  let lowestPitch = document.getElementById("lowestPitch");
+  let highestPitch = document.getElementById("highestPitch");
+  let lowestVel = document.getElementById("lowestVel");
+  let highestVel = document.getElementById("highestVel");
+  let currentPitchWave = document.getElementById("currentPitchWave");
+  let currentVelWave = document.getElementById("currentVelWave");
+
+  // set value
+  speed.value = notes[activeVoice].speed;
+  lowestPitch.value = notes[activeVoice].lowerPitchLimit;
+  highestPitch.value = notes[activeVoice].upperPitchLimit;
+  lowestVel.value = notes[activeVoice].lowerVelLimit;
+  highestVel.value = notes[activeVoice].upperVelLimit;
+  currentPitchWave.value = notes[activeVoice].pitchWaveform;
+  currentVelWave.value = notes[activeVoice].velWaveform;
+
+  // change value
+  speed.addEventListener("change", function () {
+    notes[activeVoice].speed = speed.value;
+    console.log(speed.value);
+  });
+  lowestPitch.addEventListener("change", function () {
+    notes[activeVoice].lowerPitchLimit = parseInt(lowestPitch.value);
+    notes[activeVoice].generateNotesArray();
+    sequencer.generateFunc();
+  });
+  highestPitch.addEventListener("change", function () {
+    notes[activeVoice].upperPitchLimit = parseInt(highestPitch.value);
+    notes[activeVoice].generateNotesArray();
+    sequencer.generateFunc();
+  });
+  lowestVel.addEventListener("change", function () {
+    notes[activeVoice].lowerVelLimit = parseInt(lowestVel.value);
+    notes[activeVoice].generateNotesArray();
+    sequencer.generateFunc();
+  });
+  highestVel.addEventListener("change", function () {
+    notes[activeVoice].upperVelLimit = parseInt(highestVel.value);
+    notes[activeVoice].generateNotesArray();
+    sequencer.generateFunc();
+  });
+  currentPitchWave.addEventListener("change", function () {
+    notes[activeVoice].pitchWaveform = currentPitchWave.value;
+    notes[activeVoice].pitchFunc = func.generate(currentPitchWave.value);
+    notes[activeVoice].generateNotesArray();
+    sequencer.generateFunc();
+  });
+  currentVelWave.addEventListener("change", function () {
+    notes[activeVoice].pitchWaveform = currentVelWave.value;
+    notes[activeVoice].pitchFunc = func.generate(currentVelWave.value);
+    notes[activeVoice].generateNotesArray();
+    sequencer.generateFunc();
+  });
 }
 
 async function draw() {
@@ -185,7 +265,6 @@ document.getElementById("addVoiceBtn").addEventListener("click", function () {
   let pitchWave = addPitchWave.value;
   let addVelWave = document.getElementById("addVelWave");
   let velWave = addVelWave.value;
-  console.log(pitchWave);
   addVoice(pitchWave, velWave);
 });
 
@@ -194,7 +273,9 @@ function addVoice(pitchWaveform, velWaveform) {
   notes[i] = new Notes(
     i,
     func.generate(pitchWaveform),
-    func.generate(velWaveform)
+    func.generate(velWaveform),
+    pitchWaveform,
+    velWaveform
   );
   voiceNum++;
   sequencer.addVoice();
@@ -215,12 +296,12 @@ function windowResized() {
 
 function play(i) {
   let pitch = notes[i].getPitch();
-  //console.log(pitch % 12);
+  // console.log(pitch % 12);
   let scalePosition = pitch % 12;
   let vel = notes[i].getVel();
   //console.table({ pitch, vel });
-  if (scales[scalePosition]) {
-    console.log(pitch);
+  if (scales.minor[scalePosition]) {
+    // console.log(pitch);
     midiChannel[i].playNote(pitch, { rawAttack: vel });
     midiChannel[i].stopNote(pitch, { time: "+1" });
     let freq = Tone.mtof(pitch);
@@ -264,6 +345,7 @@ class Sequencer {
     this.create = this.setup();
   }
   display(px, py) {
+    stroke(0);
     strokeWeight(1);
     // playhead
     if (this.batonDrag) {
@@ -310,7 +392,6 @@ class Sequencer {
     }
 
     // func
-    strokeWeight(2);
     this.noteFuncYoffset = this.notes[0].x / 2;
 
     for (let i = 0; i < this.noteNum; i++) {
@@ -325,13 +406,17 @@ class Sequencer {
           this.noteSize[i]
         );
         if (notes[i].positionPitch == j) {
-          strokeWeight(20);
+          strokeWeight(4);
+          stroke(255, 0, 255);
         } else {
-          strokeWeight(2);
+          strokeWeight(1);
+          stroke(0);
         }
-        point(
+        line(
           this.noteFuncX[i][j] + this.noteXpos[i],
-          this.noteFunc[i][j] + this.notes[i].y
+          this.noteFunc[i][j] + this.notes[i].y,
+          this.noteFuncX[i][j] + this.noteXpos[i],
+          this.notes[i].y
         );
       }
     }
@@ -457,25 +542,27 @@ class Func {
 }
 
 class Notes {
-  constructor(number, pitchFunc, velFunc) {
+  constructor(number, pitchFunc, velFunc, pitchWaveform, velWaveform) {
     this.number = number;
     this.sampleRate = sampleRate;
     // pitch
     this.scales = scales;
     this.positionScale = 0;
     this.pitchFunc = pitchFunc;
+    this.pitchWaveform = pitchWaveform;
     this.pitches = [];
     this.upperPitchLimit = 100;
     this.lowerPitchLimit = 40;
     this.positionPitch = 0;
     // vel
     this.velFunc = velFunc;
+    this.velWaveform = velWaveform;
     this.vels = [];
     this.upperVelLimit = 127;
     this.lowerVelLimit = 30;
     this.positionVel = 0;
     // lfo
-    this.speed = 0.05;
+    this.speed = 0.5;
     this.lfo = new Tone.Loop(() => {
       play(this.number);
     }, this.speed);
@@ -483,8 +570,8 @@ class Notes {
     this.create = this.generateNotesArray();
   }
   generateNotesArray() {
-    console.log([this.pitches.length]);
-    // this.pitches.length = 0;
+    this.pitches.length = 0;
+    this.vels.length = 0;
     let tempPitches = [];
     let tempVels = [];
     for (let i = 0; i < this.sampleRate; i++) {
@@ -500,14 +587,14 @@ class Notes {
         )
       );
 
-      if (this.positionScale > this.scales.length) {
-        this.positionScale = 0;
-      }
+      // if (this.positionScale > this.scales.major.length) {
+      //   this.positionScale = 0;
+      // }
       tempVels.push(
         int(map(this.velFunc[i], -1, 1, this.lowerVelLimit, this.upperVelLimit))
       );
     }
-    console.log([this.pitches.length]);
+    // console.log([this.pitches.length]);
     for (let i = 0; i < this.sampleRate; i++) {
       if (tempPitches[i] != tempPitches[i - 1]) {
         this.pitches.push(tempPitches[i]);
@@ -518,12 +605,12 @@ class Notes {
         this.vels.push(tempVels[i]);
       }
     }
-    console.table([
-      tempPitches.length,
-      this.pitches.length,
-      tempVels.length,
-      this.vels.length,
-    ]);
+    // console.table([
+    //   tempPitches.length,
+    //   this.pitches.length,
+    //   tempVels.length,
+    //   this.vels.length,
+    // ]);
   }
   change(pitchFunc, velFunc, pitchLow, pitchHigh, velLow, velHigh) {
     this.pitchFunc = pitchFunc;
@@ -556,6 +643,9 @@ class Notes {
     } else {
       this.lfo.stop();
     }
+  }
+  loopPlaybackRate() {
+    this.lfo.playbackRate = 2;
   }
   get vPosition() {
     return this.position;

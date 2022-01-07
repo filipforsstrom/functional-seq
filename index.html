@@ -31,6 +31,10 @@
         <button id="addVoiceBtn">Add voice</button>
       </div>
       <div>
+        <label for="scale">Scale:</label>
+        <select name="scale" id="scale"></select>
+      </div>
+      <div>
         <input type="range" id="tempo" name="tempo" min="1" max="10" />
         <label for="tempo">Tempo</label>
       </div>
@@ -45,7 +49,7 @@
         <label for="voiceSelector">Voice:</label>
         <select name="voiceSelector" id="voiceSelector"></select>
       <div>
-        <input type="range" id="speed" name="speed" min="0" max="100" />
+        <input type="range" id="speed" name="speed" min="0.005" max="1.1" step="any"/>
         <label for="speed">Speed</label>
       </div>
       <div>
@@ -89,10 +93,10 @@
         />
       </div>
       <div>
-        <label for="changePitchWave">Pitch:</label>
-        <select name="changePitchWave" id="changePitchWave"></select>
-        <label for="changeVelWave">Vel:</label>
-        <select name="changeVelWave" id="changeVelWave"></select>
+        <label for="currentPitchWave">Pitch:</label>
+        <select name="currentPitchWave" id="currentPitchWave"></select>
+        <label for="currentVelWave">Vel:</label>
+        <select name="currentVelWave" id="currentVelWave"></select>
       </div>
     </div>
   </body>
