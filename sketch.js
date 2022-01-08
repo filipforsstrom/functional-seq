@@ -14,7 +14,8 @@ let mode = 0;
 let cycleArray = [];
 let sequencer;
 let distance = [];
-// const scales = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
+let globalScale = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
+let globalScaleStep = [];
 const scales = {
   major: [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1],
   minor: [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0],
@@ -22,9 +23,13 @@ const scales = {
 // console.log(scales);
 //const synth = new Tone.Synth().toDestination();
 const synth = new Tone.PolySynth(Tone.Synth, {
-  oscillator: {
-    type: "pulse",
+  envelope: {
+    attack: 0.01,
+    decay: 3.5,
+    sustain: 0.0,
+    release: 0.8,
   },
+  oscillator: { type: "sine" },
 }).toDestination();
 const allWaveforms = [
   "sine",
@@ -62,6 +67,7 @@ async function setup() {
 
   await midiPromise;
   addMidiDevice();
+  addGlobalScale();
   addWaveforms();
   addVoiceToControlPanel();
   addEvenListener();
@@ -84,6 +90,15 @@ function addMidiDevice() {
     device.text = output.name;
     midiOutSel.add(device);
   });
+}
+
+function addGlobalScale() {
+  for (let i = 0; i < globalScale.length; i++) {
+    globalScaleStep[i] = document.getElementById("globalScaleStep" + i);
+    if (globalScale[i]) {
+      globalScaleStep[i].checked = true;
+    }
+  }
 }
 
 function addWaveforms() {
@@ -130,6 +145,14 @@ function addEvenListener() {
     // console.log(activeVoice);
     editVoice();
   });
+
+  // global scale
+  for (let i = 0; i < globalScaleStep.length; i++) {
+    globalScaleStep[i].addEventListener("change", function () {
+      globalScale[i] = globalScaleStep[i].checked;
+      console.log(globalScale);
+    });
+  }
 }
 
 function editVoice() {
@@ -140,53 +163,68 @@ function editVoice() {
   let highestVel = document.getElementById("highestVel");
   let currentPitchWave = document.getElementById("currentPitchWave");
   let currentVelWave = document.getElementById("currentVelWave");
+  let scaleSteps = [];
 
   // set value
-  speed.value = notes[activeVoice].playbackRate;
+  let speedSlider = map(notes[activeVoice].playbackRate, 0, 1.99, 0, 100);
+  // speed.value = notes[activeVoice].playbackRate;
+  speed.value = speedSlider;
   lowestPitch.value = notes[activeVoice].lowerPitchLimit;
   highestPitch.value = notes[activeVoice].upperPitchLimit;
   lowestVel.value = notes[activeVoice].lowerVelLimit;
   highestVel.value = notes[activeVoice].upperVelLimit;
   currentPitchWave.value = notes[activeVoice].pitchWaveform;
   currentVelWave.value = notes[activeVoice].velWaveform;
+  for (let i = 0; i < notes[activeVoice].scale.length; i++) {
+    scaleSteps[i] = document.getElementById("scaleStep" + i);
+    scaleSteps[i].checked = notes[activeVoice].scale[i];
+  }
 
   // change value
   speed.addEventListener("change", function () {
-    notes[activeVoice].playbackRate = speed.value;
-    console.log(speed.value);
+    // notes[activeVoice].playbackRate = (speed.value / 100) * 2;
+    let exp = 1.9;
+    let x = Math.pow(speed.value, exp);
+    let rate = map(x, 0, 6309, 0, 1.99);
+    console.log(x);
+    console.log(rate);
+    notes[activeVoice].playbackRate = rate;
   });
   lowestPitch.addEventListener("change", function () {
     notes[activeVoice].lowerPitchLimit = parseInt(lowestPitch.value);
-    notes[activeVoice].generateNotesArray();
-    sequencer.generateFunc();
+    notes[activeVoice].change();
   });
   highestPitch.addEventListener("change", function () {
     notes[activeVoice].upperPitchLimit = parseInt(highestPitch.value);
-    notes[activeVoice].generateNotesArray();
-    sequencer.generateFunc();
+    notes[activeVoice].change();
   });
   lowestVel.addEventListener("change", function () {
     notes[activeVoice].lowerVelLimit = parseInt(lowestVel.value);
-    notes[activeVoice].generateNotesArray();
-    sequencer.generateFunc();
+    notes[activeVoice].change();
   });
   highestVel.addEventListener("change", function () {
     notes[activeVoice].upperVelLimit = parseInt(highestVel.value);
-    notes[activeVoice].generateNotesArray();
-    sequencer.generateFunc();
+    notes[activeVoice].change();
   });
   currentPitchWave.addEventListener("change", function () {
     notes[activeVoice].pitchWaveform = currentPitchWave.value;
     notes[activeVoice].pitchFunc = func.generate(currentPitchWave.value);
-    notes[activeVoice].generateNotesArray();
-    sequencer.generateFunc();
+    notes[activeVoice].change();
   });
   currentVelWave.addEventListener("change", function () {
     notes[activeVoice].velWaveform = currentVelWave.value;
     notes[activeVoice].velFunc = func.generate(currentVelWave.value);
-    notes[activeVoice].generateNotesArray();
-    sequencer.generateFunc();
+    notes[activeVoice].change();
   });
+  for (let i = 0; i < notes[activeVoice].scale.length; i++) {
+    scaleSteps[i].addEventListener("change", function () {
+      for (let i = 0; i < notes[activeVoice].scale.length; i++) {
+        notes[activeVoice].scale[i] = scaleSteps[i].checked;
+        notes[activeVoice].change();
+        // console.log(notes[activeVoice].scale);
+      }
+    });
+  }
 }
 
 async function draw() {
@@ -280,7 +318,9 @@ function addVoice(pitchWaveform, velWaveform) {
   voiceNum++;
   sequencer.addVoice();
   addVoiceToControlPanel();
-  start();
+  if (document.getElementById("onOffSwitch").checked) {
+    start();
+  }
 }
 
 function mousePressed() {
@@ -300,13 +340,13 @@ function play(i) {
   let scalePosition = pitch % 12;
   let vel = notes[i].getVel();
   //console.table({ pitch, vel });
-  if (scales.minor[scalePosition]) {
+  if (globalScale[scalePosition]) {
     // console.log(pitch);
     midiChannel[i].playNote(pitch, { rawAttack: vel });
     midiChannel[i].stopNote(pitch, { time: "+1" });
     let freq = Tone.mtof(pitch);
-    let amp = map(vel, 0, 127, 0.0, 0.5);
-    //synth.triggerAttackRelease(freq, "+0.5", "+0.0", amp);
+    let amp = map(vel, 0, 127, 0.0, 0.2);
+    synth.triggerAttackRelease(freq, "+0.0", "+0.0", amp);
   }
 
   notes[i].cycle();
@@ -338,15 +378,17 @@ class Sequencer {
     this.noteXoffset = [];
     this.notePlay = [];
     this.noteDistance = [];
-    this.noteFunc = [];
-    this.noteFuncX = [[]];
-    this.noteFuncYoffset;
+    this.pitchFunc = [];
+    this.pitchFuncX = [[]];
+    this.velFunc = [];
+    this.velFuncX = [[]];
     // setup
     this.create = this.setup();
   }
   display(px, py) {
     stroke(0);
     strokeWeight(1);
+    strokeCap(SQUARE);
     // playhead
     if (this.batonDrag) {
       this.playheadPos.x = px;
@@ -392,16 +434,16 @@ class Sequencer {
     }
 
     // func
-    this.noteFuncYoffset = this.notes[0].x / 2;
 
     for (let i = 0; i < this.noteNum; i++) {
-      this.noteFuncX[i] = [i];
-      //console.log(this.noteFuncX[i])
-      for (let j = 0; j < this.noteFunc[i].length; j++) {
-        this.noteFuncX[i][j] = map(
+      this.pitchFuncX[i] = [i];
+      this.velFuncX[i] = [i];
+      //console.log(this.pitchFuncX[i])
+      for (let j = 0; j < this.pitchFunc[i].length; j++) {
+        this.pitchFuncX[i][j] = map(
           j,
           0,
-          this.noteFunc[i].length,
+          this.pitchFunc[i].length,
           0,
           this.noteSize[i]
         );
@@ -413,28 +455,60 @@ class Sequencer {
           stroke(0);
         }
         line(
-          this.noteFuncX[i][j] + this.noteXpos[i],
-          this.noteFunc[i][j] + this.notes[i].y,
-          this.noteFuncX[i][j] + this.noteXpos[i],
+          this.pitchFuncX[i][j] + this.noteXpos[i],
+          this.pitchFunc[i][j] + this.notes[i].y,
+          this.pitchFuncX[i][j] + this.noteXpos[i],
           this.notes[i].y
         );
       }
+      // let velFuncYoffset = this.notes[i].x / 2;
+      // for (let j = 0; j < this.velFunc[i].length; j++) {
+      //   this.velFuncX[i][j] = map(
+      //     j,
+      //     0,
+      //     this.velFunc[i].length,
+      //     0,
+      //     this.noteSize[i]
+      //   );
+      //   if (notes[i].positionVel == j) {
+      //     strokeWeight(4);
+      //     stroke(255, 0, 255);
+      //   } else {
+      //     strokeWeight(1);
+      //     stroke(0);
+      //   }
+      //   line(
+      //     this.velFuncX[i][j] + this.noteXpos[i],
+      //     this.velFunc[i][j] + this.notes[i].y + velFuncYoffset,
+      //     this.velFuncX[i][j] + this.noteXpos[i],
+      //     this.notes[i].x
+      //   );
+      // }
     }
   }
   generateFunc() {
     for (let i = 0; i < this.noteNum; i++) {
-      this.noteFunc[i] = [...notes[i].pitches];
-      // console.table(this.noteFunc[i].length);
-      for (let j = 0; j < this.noteFunc[i].length; j++) {
-        this.noteFunc[i][j] = map(
-          this.noteFunc[i][j],
+      this.pitchFunc[i] = [...notes[i].pitches];
+      this.velFunc[i] = [...notes[i].vels];
+      // console.table(this.pitchFunc[i].length);
+      for (let j = 0; j < this.pitchFunc[i].length; j++) {
+        this.pitchFunc[i][j] = map(
+          this.pitchFunc[i][j],
           127,
           0,
           0,
           this.notes[i].x
         );
       }
-      // console.table(this.noteFunc[i]);
+      for (let j = 0; j < this.velFunc[i].length; j++) {
+        this.velFunc[i][j] = map(
+          this.velFunc[i][j],
+          127,
+          0,
+          0,
+          this.notes[i].x
+        );
+      }
     }
   }
   setup() {
@@ -442,8 +516,10 @@ class Sequencer {
     yPos *= 0.9;
     for (let i = 0; i < this.noteNum; i++) {
       this.notes[i] = new createVector(yPos, yPos * i);
-      this.noteSize[i] = random(this.noteMinSize, 50);
-      this.noteXpos[i] = random(0, width);
+      // this.noteSize[i] = random(this.noteMinSize, 50);
+      // this.noteXpos[i] = random(0, width);
+      this.noteSize[i] = width;
+      this.noteXpos[i] = 0;
     }
   }
   start() {
@@ -545,9 +621,8 @@ class Notes {
   constructor(number, pitchFunc, velFunc, pitchWaveform, velWaveform) {
     this.number = number;
     this.sampleRate = sampleRate;
+    this.scale = [...globalScale];
     // pitch
-    this.scales = scales;
-    this.positionScale = 0;
     this.pitchFunc = pitchFunc;
     this.pitchWaveform = pitchWaveform;
     this.pitches = [];
@@ -569,8 +644,10 @@ class Notes {
     }, this.speed);
     // setup
     this.create = this.generateNotesArray();
+    this.loading = false;
   }
   generateNotesArray() {
+    this.loading = true;
     this.pitches.length = 0;
     this.vels.length = 0;
     let tempPitches = [];
@@ -587,17 +664,14 @@ class Notes {
           )
         )
       );
-
-      // if (this.positionScale > this.scales.major.length) {
-      //   this.positionScale = 0;
-      // }
       tempVels.push(
         int(map(this.velFunc[i], -1, 1, this.lowerVelLimit, this.upperVelLimit))
       );
     }
     // console.log([this.pitches.length]);
     for (let i = 0; i < this.sampleRate; i++) {
-      if (tempPitches[i] != tempPitches[i - 1]) {
+      let scalePosition = tempPitches[i] % 12;
+      if (tempPitches[i] != tempPitches[i - 1] && this.scale[scalePosition]) {
         this.pitches.push(tempPitches[i]);
       }
     }
@@ -612,35 +686,45 @@ class Notes {
     //   tempVels.length,
     //   this.vels.length,
     // ]);
+    this.loading = false;
   }
-  change(pitchFunc, velFunc, pitchLow, pitchHigh, velLow, velHigh) {
-    this.pitchFunc = pitchFunc;
-    this.velFunc = velFunc;
-    this.lowerPitchLimit = pitchLow;
-    this.upperPitchLimit = pitchHigh;
-    this.lowerVelLimit = velLow;
-    this.upperVelLimit = velHigh;
+  change() {
+    this.loading = true;
+    // this.pitchFunc = pitchFunc;
+    // this.velFunc = velFunc;
+    // this.lowerPitchLimit = pitchLow;
+    // this.upperPitchLimit = pitchHigh;
+    // this.lowerVelLimit = velLow;
+    // this.upperVelLimit = velHigh;
     this.generateNotesArray();
+    sequencer.generateFunc();
+    this.positionPitch = 0;
+    this.positionVel = 0;
+    this.loading = false;
   }
   cycle() {
-    this.positionPitch++;
-    this.positionVel++;
-    if (this.positionPitch > this.pitches.length - 1) {
-      this.positionPitch = 0;
-    }
-    if (this.positionVel > this.vels.length - 1) {
-      this.positionVel = 0;
+    if (this.loading === false) {
+      this.positionPitch++;
+      this.positionVel++;
+      if (this.positionPitch > this.pitches.length - 1) {
+        this.positionPitch = 0;
+      }
+      if (this.positionVel > this.vels.length - 1) {
+        this.positionVel = 0;
+      }
     }
   }
   getPitch() {
+    // console.log(this.pitches);
     return this.pitches[this.positionPitch];
   }
   getVel() {
+    // console.log(this.vels);
     return this.vels[this.positionVel];
   }
   loop(start) {
     if (start) {
-      // this.lfo.playbackRate = this.playbackRate;
+      this.lfo.playbackRate = this.playbackRate;
       this.lfo.start(0);
     } else {
       this.lfo.stop();
@@ -648,11 +732,5 @@ class Notes {
   }
   loopPlaybackRate(rate) {
     this.lfo.playbackRate = rate;
-  }
-  get vPosition() {
-    return this.position;
-  }
-  get positionY() {
-    return this.position.y;
   }
 }

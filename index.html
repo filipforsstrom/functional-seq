@@ -30,10 +30,10 @@
         <select name="addVelWave" id="addVelWave"></select>
         <button id="addVoiceBtn">Add voice</button>
       </div>
-      <div>
+      <!-- <div>
         <label for="scale">Scale:</label>
         <select name="scale" id="scale"></select>
-      </div>
+      </div> -->
       <div>
         <input type="range" id="tempo" name="tempo" min="1" max="10" />
         <label for="tempo">Tempo</label>
@@ -42,6 +42,31 @@
         <label for="midiOutDevice">Midi:</label>
         <select name="midiOutDevice" id="midiOutDevice"></select>
       </div>
+      <div>
+      <input type="checkbox" id="globalScaleStep0"/>
+      <label for="globalScaleStep0">C</label>
+      <input type="checkbox" id="globalScaleStep1"/>
+      <label for="globalScaleStep1">C#</label>
+      <input type="checkbox" id="globalScaleStep2"/>
+      <label for="globalScaleStep2">D</label>
+      <input type="checkbox" id="globalScaleStep3"/>
+      <label for="globalScaleStep3">D#</label>
+      <input type="checkbox" id="globalScaleStep4"/>
+      <label for="globalScaleStep4">E</label>
+      <input type="checkbox" id="globalScaleStep5"/>
+      <label for="globalScaleStep5">F</label>
+      <input type="checkbox" id="globalScaleStep6"/>
+      <label for="globalScaleStep6">F#</label>
+      <input type="checkbox" id="globalScaleStep7"/>
+      <label for="globalScaleStep7">G</label>
+      <input type="checkbox" id="globalScaleStep8"/>
+      <label for="globalScaleStep8">G#</label>
+      <input type="checkbox" id="globalScaleStep9"/>
+      <label for="globalScaleStep9">A</label>
+      <input type="checkbox" id="globalScaleStep10"/>
+      <label for="globalScaleStep10">A#</label>
+      <input type="checkbox" id="globalScaleStep11"/>
+      <label for="globalScaleStep11">B</label>
     </div>
     <script src="sketch.js"></script>
     <div class="control-panel">
@@ -49,7 +74,8 @@
         <label for="voiceSelector">Voice:</label>
         <select name="voiceSelector" id="voiceSelector"></select>
       <div>
-        <input type="range" id="speed" name="speed" min="0.005" max="2" step="any"/>
+        <!-- <input type="range" id="speed" name="speed" min="0.005" max="2" step="any"/> -->
+        <input type="range" id="speed" name="speed" min="1" max="100" step="any"/>
         <label for="speed">Speed</label>
       </div>
       <div>
@@ -98,6 +124,36 @@
         <label for="currentVelWave">Vel:</label>
         <select name="currentVelWave" id="currentVelWave"></select>
       </div>
+      <div>
+        <input type="checkbox" id="scaleStep0"/>
+        <label for="scaleStep0">C</label>
+        <input type="checkbox" id="scaleStep1"/>
+        <label for="scaleStep1">C#</label>
+        <input type="checkbox" id="scaleStep2"/>
+        <label for="scaleStep2">D</label>
+        <input type="checkbox" id="scaleStep3"/>
+        <label for="scaleStep3">D#</label>
+        <input type="checkbox" id="scaleStep4"/>
+        <label for="scaleStep4">E</label>
+        <input type="checkbox" id="scaleStep5"/>
+        <label for="scaleStep5">F</label>
+        <input type="checkbox" id="scaleStep6"/>
+        <label for="scaleStep6">F#</label>
+        <input type="checkbox" id="scaleStep7"/>
+        <label for="scaleStep7">G</label>
+        <input type="checkbox" id="scaleStep8"/>
+        <label for="scaleStep8">G#</label>
+        <input type="checkbox" id="scaleStep9"/>
+        <label for="scaleStep9">A</label>
+        <input type="checkbox" id="scaleStep10"/>
+        <label for="scaleStep10">A#</label>
+        <input type="checkbox" id="scaleStep11"/>
+        <label for="scaleStep11">B</label>
+      </div>
+      <button class="delete"
+        type="button">
+    Delete
+</button>
     </div>
   </body>
 </html>
