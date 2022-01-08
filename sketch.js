@@ -4,24 +4,13 @@ let activeVoice = 0;
 let voices;
 let func;
 let pitchFunc = [];
-let pitchfunc;
 let velFunc = [];
 let notes = [];
 let midiOut = [];
 let midiChannel = [];
-//let speed = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1];
-let mode = 0;
-let cycleArray = [];
 let sequencer;
-let distance = [];
 let globalScale = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1];
 let globalScaleStep = [];
-const scales = {
-  major: [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1],
-  minor: [1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 0],
-};
-// console.log(scales);
-//const synth = new Tone.Synth().toDestination();
 const synth = new Tone.PolySynth(Tone.Synth, {
   envelope: {
     attack: 0.01,
@@ -56,7 +45,6 @@ async function setup() {
   func = new Func();
 
   //default voice
-  // let i = voiceNum - 1;
   notes[0] = new Notes(
     0,
     func.generate("sine"),
@@ -272,11 +260,12 @@ document.getElementById("onOffSwitch").addEventListener("click", () => {
 function toggleState(state) {
   if (state) {
     console.log("on");
-    Tone.start();
+    let midiOutSel = document.getElementById("midiOutDevice");
     for (let i = 0; i < voiceNum; i++) {
-      midiOut[i] = WebMidi.getOutputByName("IAC Driver Bus 1");
+      midiOut[i] = WebMidi.getOutputByName(midiOutSel.value);
       midiChannel[i] = midiOut[i].channels[1];
     }
+    Tone.start();
     sequencer.start();
     Tone.Transport.start();
   } else {
@@ -288,10 +277,10 @@ function toggleState(state) {
 
 function start() {
   //console.log("on");
+  let midiOutSel = document.getElementById("midiOutDevice");
   for (let i = 0; i < voiceNum; i++) {
-    midiOut[i] = WebMidi.getOutputByName("IAC Driver Bus 1");
+    midiOut[i] = WebMidi.getOutputByName(midiOutSel.value);
     midiChannel[i] = midiOut[i].channels[1];
-    //cycleArray[i].start(0);
     sequencer.start();
   }
   Tone.Transport.start();
@@ -335,6 +324,7 @@ function windowResized() {
 }
 
 function play(i) {
+  let internalSynth = document.getElementById("onOffSynth");
   let pitch = notes[i].getPitch();
   // console.log(pitch % 12);
   let scalePosition = pitch % 12;
@@ -344,11 +334,12 @@ function play(i) {
     // console.log(pitch);
     midiChannel[i].playNote(pitch, { rawAttack: vel });
     midiChannel[i].stopNote(pitch, { time: "+1" });
-    let freq = Tone.mtof(pitch);
-    let amp = map(vel, 0, 127, 0.0, 0.2);
-    synth.triggerAttackRelease(freq, "+0.0", "+0.0", amp);
+    if (internalSynth.checked === true) {
+      let freq = Tone.mtof(pitch);
+      let amp = map(vel, 0, 127, 0.0, 0.2);
+      synth.triggerAttackRelease(freq, "+0.0", "+0.0", amp);
+    }
   }
-
   notes[i].cycle();
 }
 
@@ -576,6 +567,10 @@ class Sequencer {
         px < width
       ) {
         this.noteDrag[i] = true;
+        let voiceSelector = document.getElementById("voiceSelector");
+        activeVoice = i;
+        voiceSelector.value = activeVoice;
+        editVoice();
 
         // console.log(i);
         this.noteXoffset[i] = this.noteXpos[i] - px;
