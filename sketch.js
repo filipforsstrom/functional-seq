@@ -233,25 +233,6 @@ function globalSettings() {
   }
 }
 
-function createButtons() {
-  onOffBox = createCheckbox("on/off", false);
-  onOffBox.changed(toggleState);
-
-  selPitchFunc = createSelect();
-  for (let i = 0; i < allWaveforms.length; i++) {
-    selPitchFunc.option(allWaveforms[i]);
-  }
-  selVelFunc = createSelect();
-  for (let i = 0; i < allWaveforms.length; i++) {
-    selVelFunc.option(allWaveforms[i]);
-  }
-
-  addButton = createButton("add");
-  addButton.mousePressed(() => {
-    addVoice(selPitchFunc.value(), selVelFunc.value());
-  });
-}
-
 // toggle start
 document.getElementById("onOffSwitch").addEventListener("click", () => {
   if (document.getElementById("onOffSwitch").checked) {
