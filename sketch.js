@@ -14,7 +14,7 @@ let globalScaleStep = [];
 const synth = new Tone.PolySynth(Tone.Synth, {
   envelope: {
     attack: 0.01,
-    decay: 3.5,
+    decay: 18.0,
     sustain: 0.0,
     release: 0.8,
   },
@@ -40,7 +40,7 @@ let midiPromise = new Promise(function (resolve, reject) {
 });
 
 async function setup() {
-  createCanvas(windowWidth * 0.8, windowHeight * 0.85);
+  createCanvas(windowWidth * 0.8, windowHeight);
   sequencer = new Sequencer();
   func = new Func();
 
@@ -217,9 +217,13 @@ function editVoice() {
 
 async function draw() {
   await midiPromise;
-  background(50);
+  background(255);
   sequencer.display(mouseX, mouseY);
   sequencer.run();
+  stroke(0);
+  strokeWeight(2);
+  noFill();
+  rect(0, 0, width, height);
 }
 
 function globalSettings() {
@@ -361,7 +365,7 @@ class Sequencer {
     // note
     this.noteDrag = [];
     this.noteNum = 1;
-    this.noteMinSize = 5;
+    this.noteMinSize = 15;
     this.notes = [];
     this.noteSize = [];
     this.noteSizeOffset = [];
@@ -380,24 +384,6 @@ class Sequencer {
     stroke(0);
     strokeWeight(1);
     strokeCap(SQUARE);
-    // playhead
-    if (this.batonDrag) {
-      this.playheadPos.x = px;
-    }
-    if (this.playheadPos.x < 0) {
-      this.playheadPos.x = 0;
-    }
-    if (this.playheadPos.x > width) {
-      this.playheadPos.x = width;
-    }
-    rect(this.playheadPos.x, 0, this.playheadWidth, this.playheadPos.y);
-    line(0, this.batonPos.y, width, this.batonPos.y);
-    rect(
-      this.playheadPos.x - this.batonSize / 2,
-      this.batonPos.y,
-      this.batonSize,
-      height
-    );
 
     // notes
     for (let i = 0; i < this.noteNum; i++) {
@@ -425,7 +411,6 @@ class Sequencer {
     }
 
     // func
-
     for (let i = 0; i < this.noteNum; i++) {
       this.pitchFuncX[i] = [i];
       this.velFuncX[i] = [i];
@@ -440,7 +425,7 @@ class Sequencer {
         );
         if (notes[i].positionPitch == j) {
           strokeWeight(4);
-          stroke(255, 0, 255);
+          stroke(255, 0, 0);
         } else {
           strokeWeight(1);
           stroke(0);
@@ -476,6 +461,27 @@ class Sequencer {
       //   );
       // }
     }
+    // playhead
+    stroke(0);
+    strokeWeight(2);
+    if (this.batonDrag) {
+      this.playheadPos.x = px;
+    }
+    if (this.playheadPos.x < 0) {
+      this.playheadPos.x = 0;
+    }
+    if (this.playheadPos.x > width) {
+      this.playheadPos.x = width;
+    }
+
+    rect(this.playheadPos.x, 0, this.playheadWidth, this.playheadPos.y);
+    line(0, this.batonPos.y, width, this.batonPos.y);
+    rect(
+      this.playheadPos.x - this.batonSize / 2,
+      this.batonPos.y,
+      this.batonSize,
+      height
+    );
   }
   generateFunc() {
     for (let i = 0; i < this.noteNum; i++) {
@@ -507,10 +513,10 @@ class Sequencer {
     yPos *= 0.9;
     for (let i = 0; i < this.noteNum; i++) {
       this.notes[i] = new createVector(yPos, yPos * i);
-      // this.noteSize[i] = random(this.noteMinSize, 50);
-      // this.noteXpos[i] = random(0, width);
-      this.noteSize[i] = width;
-      this.noteXpos[i] = 0;
+      this.noteSize[i] = random(this.noteMinSize, 50);
+      this.noteXpos[i] = random(0, width);
+      // this.noteSize[i] = width;
+      // this.noteXpos[i] = 0;
     }
   }
   start() {

@@ -1,5 +1,14 @@
 html,
+button {
+  font-family: "IBM Plex Mono", monospace;
+}
+select {
+  font-family: "IBM Plex Mono", monospace;
+}
 body {
+  font-family: "IBM Plex Mono", monospace;
+  background-color: white;
+  color: black;
   margin: 0;
   padding: 0;
   /* height: 100%;
@@ -7,22 +16,23 @@ body {
   display: block;
 }
 .global-settings {
-  /* position: fixed;
-  height: calc(100%); */
+  position: fixed;
+  width: calc(17%);
+  height: calc(100%);
+  margin-top: calc(1%);
+  margin-left: calc(81%);
 }
 
 canvas {
   position: fixed;
-  margin-top: calc(5%);
+  margin-top: calc(0%);
 }
 
 .control-panel {
-  background-color: #442392;
-  color: white;
   position: fixed;
   /* padding: 10px; */
-  width: calc(20%);
+  width: calc(17%);
   height: calc(100%);
-  margin-top: calc(5%);
-  margin-left: calc(80%);
+  margin-top: calc(20%);
+  margin-left: calc(81%);
 }
