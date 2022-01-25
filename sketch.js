@@ -304,6 +304,7 @@ function mousePressed() {
 function mouseReleased() {
   sequencer.notPressed();
 }
+
 function windowResized() {
   resizeCanvas(windowWidth * 0.8, windowHeight * 0.95);
 }
@@ -314,7 +315,6 @@ function play(i) {
   // console.log(pitch % 12);
   let scalePosition = pitch % 12;
   let vel = notes[i].getVel();
-  //console.table({ pitch, vel });
   if (globalScale[scalePosition]) {
     // console.log(pitch);
     midiChannel[i].playNote(pitch, { rawAttack: vel });
