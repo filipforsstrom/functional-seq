@@ -1,6 +1,1 @@
-# functional-seq
-
-
-# UI/Graphics
-
-- Inspiration från oscilloskop
+Graphical sequencer made with p5js, p5.func, webmidi and tonal.js. Work in progress...
