@@ -1,8 +1,38 @@
-html, body {
+html,
+button {
+  font-family: "IBM Plex Mono", monospace;
+}
+select {
+  font-family: "IBM Plex Mono", monospace;
+}
+body {
+  font-family: "IBM Plex Mono", monospace;
+  background-color: white;
+  color: black;
   margin: 0;
   padding: 0;
+  /* height: 100%;
+  width: 100%; */
+  display: block;
+}
+.global-settings {
+  position: fixed;
+  width: calc(17%);
+  height: calc(100%);
+  margin-top: calc(1%);
+  margin-left: calc(81%);
 }
 
 canvas {
-  display: block;
+  position: fixed;
+  margin-top: calc(0%);
+}
+
+.control-panel {
+  position: fixed;
+  /* padding: 10px; */
+  width: calc(17%);
+  height: calc(100%);
+  margin-top: calc(20%);
+  margin-left: calc(81%);
 }

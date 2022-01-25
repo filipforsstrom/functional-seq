@@ -4,17 +4,165 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>Sketch</title>
+    <title>Func-SEQ</title>
 
     <link rel="stylesheet" type="text/css" href="style.css" />
 
     <script src="libraries/p5.min.js"></script>
     <script src="libraries/p5.func.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.35/Tone.js"></script>
+    <!-- <script src="libraries/tonal.min.js"></script> -->
+    <script src="https://cdn.jsdelivr.net/npm/@tonaljs/tonal/browser/tonal.min.js"></script>
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.35/Tone.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/webmidi@next/dist/iife/webmidi.iife.js"></script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&display=swap");
+    </style>
   </head>
 
   <body>
+    <div class="global-settings">
+      <div>
+        <label for="onOffSwitch">power:</label>
+        <input type="checkbox" id="onOffSwitch" />
+      </div>
+      <div>
+        <label for="onOffSynth">synth:</label>
+        <input type="checkbox" id="onOffSynth" checked />
+      </div>
+      <div>
+        <label for="midiOutDevice">midi:</label>
+        <select name="midiOutDevice" id="midiOutDevice"></select>
+      </div>
+      <div>
+        <label for="tempo">tempo:</label>
+        <input type="range" id="tempo" name="tempo" min="1" max="10" />
+      </div>
+      <div>
+        <label for="addPitchWave">pitch:</label>
+        <select name="addPitchWave" id="addPitchWave"></select>
+        <label for="addVelWave">velocity:</label>
+        <select name="addVelWave" id="addVelWave"></select>
+        <button id="addVoiceBtn">add voice</button>
+      </div>
+
+      <div>
+        <input type="checkbox" id="globalScaleStep0" />
+        <label for="globalScaleStep0">C</label>
+        <input type="checkbox" id="globalScaleStep1" />
+        <label for="globalScaleStep1">C#</label>
+        <input type="checkbox" id="globalScaleStep2" />
+        <label for="globalScaleStep2">D</label>
+        <input type="checkbox" id="globalScaleStep3" />
+        <label for="globalScaleStep3">D#</label>
+        <input type="checkbox" id="globalScaleStep4" />
+        <label for="globalScaleStep4">E</label>
+        <input type="checkbox" id="globalScaleStep5" />
+        <label for="globalScaleStep5">F</label>
+        <input type="checkbox" id="globalScaleStep6" />
+        <label for="globalScaleStep6">F#</label>
+        <input type="checkbox" id="globalScaleStep7" />
+        <label for="globalScaleStep7">G</label>
+        <input type="checkbox" id="globalScaleStep8" />
+        <label for="globalScaleStep8">G#</label>
+        <input type="checkbox" id="globalScaleStep9" />
+        <label for="globalScaleStep9">A</label>
+        <input type="checkbox" id="globalScaleStep10" />
+        <label for="globalScaleStep10">A#</label>
+        <input type="checkbox" id="globalScaleStep11" />
+        <label for="globalScaleStep11">B</label>
+      </div>
+    </div>
     <script src="sketch.js"></script>
+    <div class="control-panel">
+      <div>
+        <label for="voiceSelector">voice:</label>
+        <select name="voiceSelector" id="voiceSelector"></select>
+        <div>
+          <label for="speed">speed:</label>
+          <input
+            type="range"
+            id="speed"
+            name="speed"
+            min="1"
+            max="100"
+            step="any"
+          />
+        </div>
+        <div>
+          <label for="lowestPitch">pitch low:</label>
+          <input
+            type="number"
+            id="lowestPitch"
+            name="lowestPitch"
+            min="0"
+            max="127"
+          />
+        </div>
+        <div>
+          <label for="highestPitch">pitch high:</label>
+          <input
+            type="number"
+            id="highestPitch"
+            name="highestPitch"
+            min="0"
+            max="127"
+          />
+        </div>
+        <div>
+          <label for="lowestVel">velocity low:</label>
+          <input
+            type="number"
+            id="lowestVel"
+            name="lowestVel"
+            min="0"
+            max="127"
+          />
+        </div>
+        <div>
+          <label for="highestVel">velocity high:</label>
+          <input
+            type="number"
+            id="highestVel"
+            name="highestVel"
+            min="0"
+            max="127"
+          />
+        </div>
+        <div>
+          <label for="currentPitchWave">pitch:</label>
+          <select name="currentPitchWave" id="currentPitchWave"></select>
+          <label for="currentVelWave">velocity:</label>
+          <select name="currentVelWave" id="currentVelWave"></select>
+        </div>
+        <div>
+          <input type="checkbox" id="scaleStep0" />
+          <label for="scaleStep0">C</label>
+          <input type="checkbox" id="scaleStep1" />
+          <label for="scaleStep1">C#</label>
+          <input type="checkbox" id="scaleStep2" />
+          <label for="scaleStep2">D</label>
+          <input type="checkbox" id="scaleStep3" />
+          <label for="scaleStep3">D#</label>
+          <input type="checkbox" id="scaleStep4" />
+          <label for="scaleStep4">E</label>
+          <input type="checkbox" id="scaleStep5" />
+          <label for="scaleStep5">F</label>
+          <input type="checkbox" id="scaleStep6" />
+          <label for="scaleStep6">F#</label>
+          <input type="checkbox" id="scaleStep7" />
+          <label for="scaleStep7">G</label>
+          <input type="checkbox" id="scaleStep8" />
+          <label for="scaleStep8">G#</label>
+          <input type="checkbox" id="scaleStep9" />
+          <label for="scaleStep9">A</label>
+          <input type="checkbox" id="scaleStep10" />
+          <label for="scaleStep10">A#</label>
+          <input type="checkbox" id="scaleStep11" />
+          <label for="scaleStep11">B</label>
+        </div>
+        <button class="delete" type="button">delete</button>
+      </div>
+    </div>
   </body>
 </html>
