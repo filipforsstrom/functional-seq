@@ -8,4 +8,6 @@ Made with p5js, p5.func, webmidi and tonal.js.
 
 ## Preview
 
-https://filipforsstrom.github.io/functional-seq/
+https://github.com/filipforsstrom/functional-seq/assets/83241499/486adb2c-7457-44a4-adc4-4405a36c8c0a
+
+https://github.com/filipforsstrom/functional-seq/assets/83241499/dc89d2ad-eed1-4f55-afe8-8a0cf6350971
